@@ -1,9 +1,10 @@
 use std::{
     cell::RefCell,
-    io::{stdin, BufRead},
+    io::{stdin, Read},
     rc::Rc,
 };
 
+use itertools::Itertools;
 use num::integer::lcm;
 use regex::Regex;
 
@@ -65,26 +66,46 @@ impl Monkey {
 }
 
 fn parse_input() -> Vec<RefCell<Monkey>> {
-    stdin()
-        .lock()
+    let mut input = String::new();
+    stdin().lock().read_to_string(&mut input).unwrap();
+    input
         .lines()
-        .map(|l| l.unwrap())
-        .collect::<Vec<_>>()
         .chunks(7)
+        .into_iter()
         .enumerate()
-        .map(|(monkey_idx, chunk)| {
-            let r = Regex::new(r"(\d+)").unwrap();
-            let monkey = r.captures(&chunk[0]).unwrap()[1].parse::<usize>().unwrap();
+        .map(|(monkey_idx, mut chunk)| {
+            let r = Regex::new(r"\d+").unwrap();
+            let monkey = r
+                .find(&chunk.next().unwrap())
+                .unwrap()
+                .as_str()
+                .parse::<usize>()
+                .unwrap();
             assert_eq!(monkey, monkey_idx);
             let items = r
-                .find_iter(&chunk[1])
+                .find_iter(&chunk.next().unwrap())
                 .map(|m| m.as_str().parse::<u64>().unwrap())
                 .collect::<Vec<u64>>();
-            let test = r.captures(&chunk[3]).unwrap()[1].parse::<u64>().unwrap();
-            let if_true = r.captures(&chunk[4]).unwrap()[1].parse::<usize>().unwrap();
-            let if_false = r.captures(&chunk[5]).unwrap()[1].parse::<usize>().unwrap();
-            let r = Regex::new(r"(new) = (old|\d+) ([+*-/]) (old|\d+)").unwrap();
-            let captures = r.captures(&chunk[2]).unwrap();
+            let r2 = Regex::new(r"(new) = (old|\d+) ([+*-/]) (old|\d+)").unwrap();
+            let captures = r2.captures(&chunk.next().unwrap()).unwrap();
+            let test = r
+                .find(&chunk.next().unwrap())
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap();
+            let if_true = r
+                .find(&chunk.next().unwrap())
+                .unwrap()
+                .as_str()
+                .parse::<usize>()
+                .unwrap();
+            let if_false = r
+                .find(&chunk.next().unwrap())
+                .unwrap()
+                .as_str()
+                .parse::<usize>()
+                .unwrap();
             let capture_op = |capture: &str| -> Box<dyn Fn(u64) -> u64> {
                 if capture == "old" {
                     Box::new(|x| x)
